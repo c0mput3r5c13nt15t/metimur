@@ -13,7 +13,7 @@
     <string name="menu_weather">Weather</string>
     <string name="loading">...</string>
     <string name="weather_in">Weather in</string>
-    <string name="three_day_forecast">Three Day Forecast</string>
+    <string name="forecast">Forecast</string>
     <string name="weather_icon">Weather icon</string>
     <string name="no_location_access">Can\'t access location data</string>
 </resources>

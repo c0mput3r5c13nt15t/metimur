@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
@@ -35,6 +36,7 @@ import org.json.JSONTokener
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.collections.ArrayList
 
 @Suppress("DEPRECATION")
 class WeatherFragment : Fragment() {
@@ -50,6 +52,10 @@ class WeatherFragment : Fragment() {
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    private lateinit var weatherRV: RecyclerView
+    private lateinit var weatherRVAdapter: WeatherRVAdapter
+    private lateinit var weatherList: ArrayList<WeatherRVModal>
 
     private val apiKey = "36bfccfe0e1ec11ce99fbfb9a10fecce"
 
@@ -73,6 +79,13 @@ class WeatherFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         swipeRefreshLayout = binding.container
+        weatherRV = binding.idRVWeatherItems
+
+        weatherList = ArrayList()
+
+        weatherRVAdapter = WeatherRVAdapter(weatherList, requireContext())
+
+        weatherRV.adapter = weatherRVAdapter
 
         val root: View = binding.root
 
@@ -121,7 +134,7 @@ class WeatherFragment : Fragment() {
         val queue = Volley.newRequestQueue(this.context)
         // Bindings
         val locationView: TextView = binding.location
-        // val dateTimeView: TextView = binding.dateTime
+        val dateTimeView: TextView = binding.dateTime
         val weatherIconView: ImageView = binding.weatherIcon
         val weatherDescriptionView: TextView = binding.weatherDescription
         val temperatureView: TextView = binding.temperature
@@ -129,19 +142,6 @@ class WeatherFragment : Fragment() {
         val windView: TextView = binding.wind
         val humidityView: TextView = binding.humidity
         val pressureView: TextView = binding.pressure
-
-        val day1WeatherIconView: ImageView = binding.day1WeatherIcon
-        val day2WeatherIconView: ImageView = binding.day2WeatherIcon
-        val day3WeatherIconView: ImageView = binding.day3WeatherIcon
-        val day1WeatherDescriptionView: TextView = binding.day1WeatherDescription
-        val day2WeatherDescriptionView: TextView = binding.day2WeatherDescription
-        val day3WeatherDescriptionView: TextView = binding.day3WeatherDescription
-        val day1TemperatureView: TextView = binding.day1Temperature
-        val day2TemperatureView: TextView = binding.day2Temperature
-        val day3TemperatureView: TextView = binding.day3Temperature
-        val day1WindView: TextView = binding.day1Wind
-        val day2WindView: TextView = binding.day2Wind
-        val day3WindView: TextView = binding.day3Wind
 
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location->
@@ -157,11 +157,12 @@ class WeatherFragment : Fragment() {
                     val currentWeatherRequest = StringRequest(
                         Request.Method.GET, currentWeatherRequestUrl,
                         { response ->
-                            /*
                             val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy '-' HH:mm:ss")
                             val localDateTime: LocalDateTime = LocalDateTime.now()
                             val ldtString = formatter.format(localDateTime)
-                            "$ldtString o'clock".also { dateTimeView.text = it } */
+                            "$ldtString o'clock".also { dateTimeView.text = it }
+
+                            // parse JSON: https://johncodeos.com/how-to-parse-json-in-android-using-kotlin/
 
                             // Display the first 500 characters of the response string.
                             val jsonObject = JSONTokener(response).nextValue() as JSONObject
@@ -190,51 +191,28 @@ class WeatherFragment : Fragment() {
 
                             val weatherArray = jsonObject.getJSONArray("list")
 
-                            // Weather in 24 Hours
+                            for (i in 0 until weatherArray.length()) {
+                                val weather = weatherArray.getJSONObject(i)
 
-                            val weatherIn24Hours = weatherArray.getJSONObject(5)
+                                val firstWeatherJSONObject = weather.getJSONArray("weather").getJSONObject(0)
+                                val weatherDescription = firstWeatherJSONObject.getString("main")
+                                val weatherIcon = firstWeatherJSONObject.getString("icon")
 
-                            val firstWeatherIn24JSONObject = weatherIn24Hours.getJSONArray("weather").getJSONObject(0)
-                            day1WeatherDescriptionView.text = firstWeatherIn24JSONObject.getString("main")
-                            val weatherIn24Icon = firstWeatherIn24JSONObject.getString("icon")
-                            DownloadImageFromInternet(day1WeatherIconView).execute("https://openweathermap.org/img/wn/${weatherIn24Icon}@2x.png")
+                                val mainJSONObject = weather.getJSONObject("main")
+                                val temperature = "${mainJSONObject.getString("temp")} °C"
 
-                            val mainIn24JSONObject = weatherIn24Hours.getJSONObject("main")
-                            ("Temp: " + mainIn24JSONObject.getString("temp") + " °C").also { day1TemperatureView.text = it }
+                                val windSONObject = weather.getJSONObject("wind")
+                                val wind = "${windSONObject.getString("speed")} m/s"
 
-                            val windIn24JSONObject = weatherIn24Hours.getJSONObject("wind")
-                            "Wind: ${windIn24JSONObject.getString("speed")} m/s".also { day1WindView.text = it }
+                                weatherList.add(WeatherRVModal(
+                                    weatherIcon,
+                                    weatherDescription,
+                                    temperature,
+                                    wind,
+                                ))
+                            }
 
-                            // Weather in 48 Hours
-
-                            val weatherIn48Hours = weatherArray.getJSONObject(15)
-
-                            val firstWeatherIn48JSONObject = weatherIn48Hours.getJSONArray("weather").getJSONObject(0)
-                            day2WeatherDescriptionView.text = firstWeatherIn48JSONObject.getString("main")
-                            val weatherIn48Icon = firstWeatherIn48JSONObject.getString("icon")
-                            DownloadImageFromInternet(day2WeatherIconView).execute("https://openweathermap.org/img/wn/${weatherIn48Icon}@2x.png")
-
-                            val mainIn48JSONObject = weatherIn48Hours.getJSONObject("main")
-                            ("Temp: " + mainIn48JSONObject.getString("temp") + " °C").also { day2TemperatureView.text = it }
-
-                            val windIn48JSONObject = weatherIn48Hours.getJSONObject("wind")
-                            ("Wind: " + windIn48JSONObject.getString("speed") + " m/s").also { day2WindView.text = it }
-
-                            // Weather in 72 Hours
-
-                            val weatherIn72Hours = weatherArray.getJSONObject(23)
-
-                            val firstWeatherIn72JSONObject = weatherIn72Hours.getJSONArray("weather").getJSONObject(0)
-                            day3WeatherDescriptionView.text = firstWeatherIn72JSONObject.getString("main")
-                            val weatherIn72Icon = firstWeatherIn72JSONObject.getString("icon")
-                            DownloadImageFromInternet(day3WeatherIconView).execute("https://openweathermap.org/img/wn/${weatherIn72Icon}@2x.png")
-
-                            val mainIn72JSONObject = weatherIn72Hours.getJSONObject("main")
-                            ("Temp: " + mainIn72JSONObject.getString("temp") + " °C").also { day3TemperatureView.text = it }
-
-                            val windIn72JSONObject = weatherIn72Hours.getJSONObject("wind")
-                            ("Wind: " + windIn72JSONObject.getString("speed") + " m/s").also { day3WindView.text = it }
-
+                            weatherRVAdapter.notifyDataSetChanged()
                         },
                         { println("That didn't work!") })
 
@@ -243,6 +221,7 @@ class WeatherFragment : Fragment() {
                 }
 
             }
+
     }
 
     @SuppressLint("StaticFieldLeak")
